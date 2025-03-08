@@ -1,0 +1,14 @@
+#/etc/systemd/system/proxmox-webapp.service
+[Unit]
+Description=Proxmox Webapp
+After=network.target
+
+[Service]
+Type=simple
+User=proxmox
+WorkingDirectory=/home/proxmox/proxmox/Proxmox/webapp
+ExecStart=/home/proxmox/proxmox/Proxmox/webapp/venv/bin/python /home/proxmox/proxmox/Proxmox/webapp/main.py
+Restart=Always
+
+[Install]
+WantedBy=multi-user.target

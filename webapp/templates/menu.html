@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block body %}
+<form class="button_form" method="POST">
+  <button class="menu" onclick="runScript('create_vms')" type="button">Luo tyhjät virtuaalikoneet</button>
+  <!--<button class="menu" onclick="runScript('create_from_template')" type="button">Luo virtuaalikoneet mallipohjasta</button>-->
+  <button class="menu" onclick="runScript('delete_vms')" type="button">Poista virtuaalikoneet</button>
+  <button class="menu" formaction="/admin/run_script/passwd" type="submit">Nollaa opiskelijoiden salasanat</button>
+  <button class="menu" formaction="/admin/run_script/download_passwd_file" type="submit">Lataa salasanatiedosto</button>
+  <button class="menu" formaction="/admin/run_script/permissions" type="submit">Aseta oletuskäyttöoikeudet</button>
+  <button class="menu" formaction="/admin/run_script/firewall" type="submit">Ota palomuurisäännöt käyttöön</button>
+  <button class="menu_logout" formaction="/admin/logout" type="submit">Kirjaudu ulos</button>
+</form>
+<div class="overlay" id="overlay"></div>
+<div class="popup" id="popup">
+  <p id="popup_jobdesc">Luodaan/tuhotaan virtuaalikoneita...</p>
+  <p id="popup_joblength"></p>
+  <p id="popup_starttime"></p>
+  <p id="popup_timer"></p>
+  <img src="static/processing.gif" />
+</div>
+<script>
+  let timerInterval;
+  let startTime;
+
+  function runScript(script) {
+    document.getElementById("overlay").style.display = "block";
+    document.getElementById("popup").style.display = "block";
+    if (script === "create_vms") {
+      document.getElementById("popup_jobdesc").textContent = "Luodaan opiskelijoiden virtuaalikoneet..."
+      document.getElementById("popup_joblength").textContent = "Työ kestää noin 25 minuuttia."
+    } else {
+      document.getElementById("popup_jobdesc").textContent = "Tuhotaan opiskelijoiden virtuaalikoneet..."
+      document.getElementById("popup_joblength").textContent = "Työ kestää noin 12 minuuttia."
+    }
+    let currentTime = new Date()
+    let hours = String(currentTime.getHours()).padStart(2, '0');
+    let minutes = String(currentTime.getMinutes()).padStart(2, '0');
+    document.getElementById("popup_starttime").textContent = `Työ alkanut: ${hours}:${minutes}`;
+    startTimer();
+    fetch(`/admin/run_script/${script}`)
+    checkTaskStatus();
+  }
+  function startTimer() {
+    startTime = Date.now();
+    clearInterval(timerInterval)
+    timerInterval = setInterval(updateTimer, 1000);
+  }
+  function updateTimer() {
+    let elapsedTime = Date.now() - startTime;
+    let minutes = Math.floor(elapsedTime / 60000);
+    let seconds = Math.floor((elapsedTime % 60000) / 1000);
+    document.getElementById("popup_timer")
+      .textContent = `Työ kestänyt: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+  function checkTaskStatus() {
+    fetch("/admin/task_status")
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === "in_progress") {
+          setTimeout(checkTaskStatus, 5000);
+        } else {
+          document.getElementById("overlay").style.display = "none";
+          document.getElementById("popup").style.display = "none";
+          clearInterval(timerInterval);
+        }
+      });
+  }
+  window.onload = function() {
+    fetch("/admin/task_status")
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === "in_progress") {
+          document.getElementById("overlay").style.display = "block";
+          document.getElementById("popup").style.display = "block";
+          startTimer();
+          checkTaskStatus();
+        }
+    });
+  }
+</script>
+{% endblock %}
